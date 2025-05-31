@@ -1,0 +1,418 @@
+openapi: 3.0.0
+info:
+  title: Trello Clone API
+  version: 1.0.0
+  description: An API for managing users, tasks, and task assignments in a Trello-like application
+
+
+paths:
+  /tasks:
+    get:
+      tags:
+        - Task
+      summary: Get all tasks
+      description: |
+        - Get all Tasks.
+        - Implemented Paging.
+        - Default page size is 10 and default page is 0.
+      parameters:
+        - name: page
+          in: query
+          description: Page number
+          required: false
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          description: Page size
+          required: false
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: A list of tasks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskPage'
+    post:
+      tags:
+        - Task
+      summary: Create a new task
+      description: |
+        - Create a new Task.
+        - Default state of the Task is TODO.
+        - Task can be created with 0 assigned Users.
+        - Only valid _assignedUserIds_ are added in assigned users. Other Invalid ones are ignored.
+        - User Table is updated, to have respective _assignedTaskId_.
+
+      requestBody:
+        description: Task details
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+  /tasks/applyFilter:
+    post:
+      tags:
+        - Task
+      summary: Get filtered tasks
+      description: |
+        - Apply all the filters in request body.
+        - For title and description filter, case insensitive substrings are checked.
+        - Implemented using decorator pattern.
+      requestBody:
+        description: Task filter criteria
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskFilterRequest'
+      responses:
+        '200':
+          description: A list of filtered tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+  /tasks/{taskId}:
+    get:
+      tags:
+        - Task
+      summary: Get a task by ID
+      description: |
+        - Get task by TaskId.
+        - Give 404 not found error if invalid taskId.
+      parameters:
+        - name: taskId
+          in: path
+          description: Task ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '404':
+          description: Task not found
+    patch:
+      tags:
+        - Task
+      summary: Update a task by ID
+      description: |
+        - It is patch call. Only fields provided in request body are updated.
+        - Fields not in the request body remain same.
+        - When _assignedUserId_ change, respective User Table is updated to add/remove _assignedTaskIds_.
+        - _lastModifiedDateTime_ is updated for every modification made.
+      parameters:
+        - name: taskId
+          in: path
+          description: Task ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Task details
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskRequest'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+    delete:
+      tags:
+        - Task
+      summary: Delete a task by ID
+      description: |
+        - Deletes a Task.
+        - Remove respective _assignedTaskId_ from assigned Users in User Table.
+      parameters:
+        - name: taskId
+          in: path
+          description: Task ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Task deleted successfully
+
+  /users:
+    get:
+      summary: Get all users
+      description:  |
+        - Get all users.
+        - Implemented Paging.
+        - Default page size is 10 and default page is 0.
+      tags:
+        - User
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPage'
+  /users/create:
+    post:
+      summary: Create a new user
+      description: |
+        - new user is created with 0 assigned Tasks.
+      tags:
+        - User
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+  /users/{userId}:
+    get:
+      summary: Get user by ID
+      description: |
+        - Get task by userId.
+        - Give 404 not found error if invalid userId.
+      tags:
+        - User
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+  /users/delete/{userId}:
+    delete:
+      summary: Delete a user
+      tags:
+        - User
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: User deleted
+
+
+components:
+  schemas:
+    TaskPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+        pageable:
+          type: object
+          properties:
+            sort:
+              type: object
+            offset:
+              type: integer
+            pageNumber:
+              type: integer
+            pageSize:
+              type: integer
+            paged:
+              type: boolean
+            unpaged:
+              type: boolean
+        totalPages:
+          type: integer
+        totalElements:
+          type: integer
+        last:
+          type: boolean
+        first:
+          type: boolean
+        sort:
+          type: object
+        numberOfElements:
+          type: integer
+        size:
+          type: integer
+        number:
+          type: integer
+
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        userId:
+          type: string
+        state:
+          type: string
+          enum: [TODO, IN_PROGRESS, DONE]
+        createdDateTime:
+          type: string
+          format: date-time
+        lastModifiedDateTime:
+          type: string
+          format: date-time
+        assignedUserIds:
+          type: array
+          items:
+            type: string
+      example:
+        id: "1"
+        title: "Sample Task"
+        description: "This is a sample task"
+        userId: "user123"
+        state: "TODO"
+        createdDateTime: "2023-11-05T10:00:00Z"
+        lastModifiedDateTime: "2023-11-05T10:00:00Z"
+        assignedUserIds: ["user123"]
+
+    TaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        userId:
+          type: string
+        state:
+          type: string
+          enum: [TODO, IN_PROGRESS, DONE]
+        assignedUserIds:
+          type: array
+          items:
+            type: string
+      example:
+        title: "Sample Task"
+        description: "This is a sample task"
+        userId: "user123"
+        state: "TODO"
+        assignedUserIds: ["user123"]
+
+    TaskFilterRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        state:
+          type: string
+          enum: [TODO, IN_PROGRESS, DONE]
+        createdDateTimeFrom:
+          type: string
+          format: date-time
+        assignedUserIds:
+          type: array
+          items:
+            type: string
+      example:
+        title: "Sample Task"
+        description: "This is a sample task"
+        state: "TODO"
+        createdDateTimeFrom: "2023-11-01T00:00:00Z"
+        assignedUserIds: ["user123"]
+
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+        assignedTaskIds:
+          type: array
+          items:
+            type: string
+    UserRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+    UserPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        pageable:
+          type: object
+          properties:
+            sort:
+              type: object
+            offset:
+              type: integer
+            pageNumber:
+              type: integer
+            pageSize:
+              type: integer
+            paged:
+              type: boolean
+            unpaged:
+              type: boolean
+        totalPages:
+          type: integer
+        totalElements:
+          type: integer
+        last:
+          type: boolean
+        first:
+          type: boolean
+        sort:
+          type: object
+        numberOfElements:
+          type: integer
+        size:
+          type: integer
+        number:
+          type: integer

@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "Trello-Clone",
+			"path": "."
+		},
+		{
+			"name": "src",
+			"path": "../../../Downloads/Trello-main/src"
+		}
+	],
+	"settings": {}
+}
